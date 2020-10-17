@@ -1,0 +1,7 @@
+apiVersion: sheetops.hairizuan.com/v1alpha1
+kind: GooglesheetSync
+metadata:
+  name: googlesheetsync-sample
+spec:
+  # Add fields here
+  foo: bar

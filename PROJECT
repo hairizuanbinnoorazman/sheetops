@@ -1,0 +1,7 @@
+domain: hairizuan.com
+repo: github.com/hairizuanbinnoorazman/sheetops
+resources:
+- group: sheetops
+  kind: GooglesheetSync
+  version: v1alpha1
+version: "2"
