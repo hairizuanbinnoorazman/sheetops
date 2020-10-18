@@ -29,13 +29,15 @@ type GooglesheetSyncSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of GooglesheetSync. Edit GooglesheetSync_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	SpreadsheetID string `json:"spreadsheet_id,omitempty"`
+	CellRange     string `json:"cell_range,omitempty"`
 }
 
 // GooglesheetSyncStatus defines the observed state of GooglesheetSync
 type GooglesheetSyncStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	SyncStatus string `json:"sync_status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
