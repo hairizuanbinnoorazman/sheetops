@@ -17,14 +17,22 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
+	"io/ioutil"
 	"os"
 
+	"github.com/hairizuanbinnoorazman/sheetops/appmgr"
+
+	"google.golang.org/api/option"
+	"google.golang.org/api/sheets/v4"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/sirupsen/logrus"
 
 	sheetopsv1alpha1 "github.com/hairizuanbinnoorazman/sheetops/api/v1alpha1"
 	"github.com/hairizuanbinnoorazman/sheetops/controllers"
@@ -66,10 +74,24 @@ func main() {
 		os.Exit(1)
 	}
 
+	var logger = logrus.New()
+
+	credJSON, err := ioutil.ReadFile("sheetops-auth.json")
+	if err != nil {
+		logger.Errorf("Unable to retrieve file. Err: %v", err)
+		os.Exit(1)
+	}
+	xClient, err := sheets.NewService(context.Background(), option.WithCredentialsJSON(credJSON))
+	if err != nil {
+		logger.Errorf("Unable to create spreadsheet obj. Err: %v", err)
+		os.Exit(1)
+	}
+
 	if err = (&controllers.GooglesheetSyncReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("GooglesheetSync"),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Log:      logger,
+		Scheme:   mgr.GetScheme(),
+		SheetSvc: appmgr.NewGoogleSheets(logger, xClient),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GooglesheetSync")
 		os.Exit(1)
