@@ -9,13 +9,14 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - deployment
+  - deployments
   verbs:
   - create
   - delete
   - get
   - list
   - update
+  - watch
 - apiGroups:
   - sheetops.hairizuan.com
   resources:

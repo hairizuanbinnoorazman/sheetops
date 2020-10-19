@@ -4,4 +4,5 @@ metadata:
   name: googlesheetsync-sample
 spec:
   # Add fields here
-  foo: bar
+  spreadsheet_id: 1Edzdvv3ifvXVnWKhMaQl-dX0KgRFmy9LejwFB4DYaqI
+  cell_range: Sheet2!A1:C
