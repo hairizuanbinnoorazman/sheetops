@@ -41,6 +41,7 @@ type GooglesheetSyncStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // GooglesheetSync is the Schema for the googlesheetsyncs API
 type GooglesheetSync struct {
