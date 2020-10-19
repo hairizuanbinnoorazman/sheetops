@@ -4,6 +4,10 @@ Sheetops for demo
 
 # Issues
 
+## Unable to update status
+
+Apparently, we need to add status as some sort of subresource of sorts to make it accessible to the codebase. `// +kubebuilder:subresource:status` Refer to the api (also kubebuilder as well). Not sure what kind of auto generation magic is done here - probably its used to create status portion of CRD in yaml.
+
 ## Unable to contact Google endpoint
 
 The controller initially complains of the following error: `x509: certificate signed by unknown authority`. This is probably cause certificates are generally not shipped with the container. We would need to manually install it to get this portion working
