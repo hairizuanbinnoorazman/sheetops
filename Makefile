@@ -34,7 +34,7 @@ uninstall: manifests
 	kustomize build config/crd | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests
+deploy: manifests docker-build docker-push
 	cd config/manager && kustomize edit set image controller=${IMG}
 	kustomize build config/default | kubectl apply -f -
 
@@ -61,6 +61,12 @@ docker-build:
 # Push the docker image
 docker-push:
 	docker push ${IMG}
+
+sample-apply:
+	kubectl apply -f config/samples/sheetops_v1alpha1_googlesheetsync.yaml
+
+sample-remove:
+	kubectl delete googlesheetsyncs googlesheetsync-sample
 
 # find or download controller-gen
 # download controller-gen if necessary
