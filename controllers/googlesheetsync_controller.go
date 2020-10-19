@@ -24,13 +24,20 @@ import (
 	"github.com/hairizuanbinnoorazman/sheetops/logger"
 
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	sheetopsv1alpha1 "github.com/hairizuanbinnoorazman/sheetops/api/v1alpha1"
 )
+
+// To prevent crazy number of calls
+var appSettings []appmgr.AppSetting
+var lastAPICall time.Time
 
 // GooglesheetSyncReconciler reconciles a GooglesheetSync object
 type GooglesheetSyncReconciler struct {
@@ -42,7 +49,7 @@ type GooglesheetSyncReconciler struct {
 
 // +kubebuilder:rbac:groups=sheetops.hairizuan.com,resources=googlesheetsyncs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=sheetops.hairizuan.com,resources=googlesheetsyncs/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=apps,resources=deployment,verbs=get;list;create;update;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;create;update;delete;watch
 
 func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -56,7 +63,7 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	if err != nil {
 		r.Log.Errorf("Unable to retrieve item from kubernetes api. Will retry again soon. Err: %v", err)
 		return ctrl.Result{
-			RequeueAfter: 10 * time.Second,
+			RequeueAfter: 60 * time.Second,
 		}, nil
 	}
 
@@ -66,17 +73,22 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	if err != nil {
 		r.Log.Errorf("Unable to update status of syncer - indicative of more issues for the integration. Err: %v", err)
 		return ctrl.Result{
-			RequeueAfter: 10 * time.Second,
+			RequeueAfter: 60 * time.Second,
 		}, nil
 	}
 
-	r.Log.Infof("Begin reconcilation of app settings from %v - cellrange: %v", syncer.Spec.SpreadsheetID, syncer.Spec.CellRange)
-	appSettings, err := r.SheetSvc.GetValues(syncer.Spec.SpreadsheetID, syncer.Spec.CellRange)
+	if time.Now().Sub(lastAPICall).Seconds() > float64(60) {
+		r.Log.Infof("Begin reconcilation of app settings from %v - cellrange: %v", syncer.Spec.SpreadsheetID, syncer.Spec.CellRange)
+		appSettings, err = r.SheetSvc.GetValues(syncer.Spec.SpreadsheetID, syncer.Spec.CellRange)
+		lastAPICall = time.Now()
+	} else {
+		r.Log.Infof("Utilize cached version of app settings. AppSettings: %+v", appSettings)
+	}
 
 	if err != nil {
 		r.Log.Errorf("Unable to retrieve app settings from googlesheets. Err: %v", err)
 		return ctrl.Result{
-			RequeueAfter: 10 * time.Second,
+			RequeueAfter: 60 * time.Second,
 		}, nil
 	}
 
@@ -96,10 +108,19 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			newDeployment.SetNamespace("default")
 			newDeployment.SetLabels(map[string]string{
 				"managed-by": "googlespreadsheet-sync",
-				"last-sync":  time.Now().String(),
 			})
+			ls := &meta.LabelSelector{}
+			ls = meta.AddLabelToSelector(ls, "app", appSetting.Name)
+			newDeployment.Spec.Selector = ls
 			newDeployment.Spec.Replicas = int32convert(appSetting.Replicas)
-			newDeployment.Spec.Template.Spec.Containers[0].Image = appSetting.Image
+			cont := v1.Container{
+				Name:  appSetting.Name,
+				Image: appSetting.Image,
+			}
+			newDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{
+				"app": appSetting.Name,
+			}
+			newDeployment.Spec.Template.Spec.Containers = []v1.Container{cont}
 			err = r.Create(ctx, &newDeployment)
 			if err != nil {
 				r.Log.Errorf("Unable to create the new deployment. Err: %v", err)
@@ -134,7 +155,7 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		if err != nil {
 			r.Log.Errorf("Unable to update status of syncer - indicative of more issues for the integration. Err: %v", err)
 			return ctrl.Result{
-				RequeueAfter: 10 * time.Second,
+				RequeueAfter: 60 * time.Second,
 			}, nil
 		}
 	}
@@ -144,12 +165,12 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	if err != nil {
 		r.Log.Errorf("Unable to update status of syncer - indicative of more issues for the integration. Err: %v", err)
 		return ctrl.Result{
-			RequeueAfter: 10 * time.Second,
+			RequeueAfter: 60 * time.Second,
 		}, nil
 	}
 
 	return ctrl.Result{
-		RequeueAfter: 10 * time.Second,
+		RequeueAfter: 60 * time.Second,
 	}, nil
 }
 
@@ -161,5 +182,6 @@ func int32convert(i int) *int32 {
 func (r *GooglesheetSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&sheetopsv1alpha1.GooglesheetSync{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
