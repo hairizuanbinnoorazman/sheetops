@@ -133,7 +133,7 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 		if expectedDeployment.Spec.Template.Spec.Containers[0].Image != appSetting.Image || *expectedDeployment.Spec.Replicas != int32(appSetting.Replicas) {
 			expectedDeployment.SetLabels(map[string]string{
 				"managed-by": "googlespreadsheet-sync",
-				"last-sync":  time.Now().String(),
+				"last-sync":  time.Now().Format("2006-01-02T1504"),
 			})
 			expectedDeployment.Spec.Template.Spec.Containers[0].Image = appSetting.Image
 			expectedDeployment.Spec.Replicas = int32convert(appSetting.Replicas)
