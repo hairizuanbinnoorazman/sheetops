@@ -25,6 +25,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -108,6 +109,7 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			newDeployment.SetNamespace("default")
 			newDeployment.SetLabels(map[string]string{
 				"managed-by": "googlespreadsheet-sync",
+				"last-sync":  time.Now().Format("2006-01-02T1504"),
 			})
 			ls := &meta.LabelSelector{}
 			ls = meta.AddLabelToSelector(ls, "app", appSetting.Name)
@@ -116,6 +118,16 @@ func (r *GooglesheetSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 			cont := v1.Container{
 				Name:  appSetting.Name,
 				Image: appSetting.Image,
+				Resources: v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("300m"),
+						v1.ResourceMemory: resource.MustParse("300Mi"),
+					},
+					Requests: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("100m"),
+						v1.ResourceMemory: resource.MustParse("100Mi"),
+					},
+				},
 			}
 			newDeployment.Spec.Template.ObjectMeta.Labels = map[string]string{
 				"app": appSetting.Name,
