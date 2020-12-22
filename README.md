@@ -2,6 +2,8 @@
 
 Sheetops for demo
 
+The following demo is built using kubebuilder
+
 # Issues
 
 ## Unable to update status
